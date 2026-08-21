@@ -37,6 +37,7 @@ jobs:
           --onefile
           --windowed
           --name "CSV列名提取合并"
+          --manifest windows_dpi.manifest
           --hidden-import openpyxl
           --collect-submodules openpyxl
           csv_column_merger_gui.py
@@ -48,5 +49,4 @@ jobs:
           path: dist/CSV列名提取合并.exe
           if-no-files-found: error
           retention-days: 30
-
 
