@@ -8,6 +8,7 @@ import os
 import queue
 import re
 import threading
+import ctypes
 from pathlib import Path
 from typing import Any, Dict
 
@@ -27,6 +28,33 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
     "recursive": False,
     "excel_all_sheets": False,
 }
+
+
+def enable_windows_high_dpi() -> None:
+    """Enable crisp rendering on scaled Windows displays before Tk creates a window."""
+
+    if os.name != "nt":
+        return
+
+    try:
+        # Windows 10 Creators Update and newer: per-monitor DPI awareness v2.
+        if ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4)):
+            return
+    except (AttributeError, OSError):
+        pass
+
+    try:
+        # Windows 8.1 fallback.
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)
+        return
+    except (AttributeError, OSError):
+        pass
+
+    try:
+        # Windows 7 fallback.
+        ctypes.windll.user32.SetProcessDPIAware()
+    except (AttributeError, OSError):
+        pass
 
 
 def settings_path() -> Path:
@@ -142,7 +170,13 @@ class MergerApplication:
         action_frame = ttk.Frame(outer)
         action_frame.grid(row=7, column=0, columnspan=3, sticky="ew", pady=(0, 10))
         action_frame.columnconfigure(1, weight=1)
-        self.run_button = ttk.Button(action_frame, text="开始提取并合并", command=self._start_merge)
+        self.run_button = ttk.Button(
+            action_frame,
+            text="开始提取并合并",
+            command=self._start_merge,
+            style="Primary.TButton",
+            width=20,
+        )
         self.run_button.grid(row=0, column=0, sticky="w", padx=(0, 16))
         self.progress = ttk.Progressbar(action_frame, mode="determinate", maximum=100)
         self.progress.grid(row=0, column=1, sticky="ew")
@@ -384,11 +418,27 @@ class MergerApplication:
 
 
 def main() -> None:
+    enable_windows_high_dpi()
     root = tk.Tk()
+
     try:
-        ttk.Style(root).theme_use("vista" if os.name == "nt" else "clam")
+        # Keep fonts and controls proportional after DPI awareness is enabled.
+        root.tk.call("tk", "scaling", root.winfo_fpixels("1i") / 72.0)
     except tk.TclError:
         pass
+
+    style = ttk.Style(root)
+    try:
+        style.theme_use("vista" if os.name == "nt" else "clam")
+    except tk.TclError:
+        pass
+    root.option_add("*Font", ("Microsoft YaHei UI", 10))
+    style.configure(".", font=("Microsoft YaHei UI", 10))
+    style.configure(
+        "Primary.TButton",
+        font=("Microsoft YaHei UI", 12, "bold"),
+        padding=(28, 14),
+    )
     MergerApplication(root)
     root.mainloop()
 
